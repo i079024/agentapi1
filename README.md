@@ -1,12 +1,13 @@
 # Agent API Testing Platform
 
-> A comprehensive, AI-powered API testing platform that enables developers to generate, manage, and execute API tests with intelligent suggestions and automation capabilities.
+> A comprehensive, AI-powered API testing platform with advanced GitHub repository analysis, test coverage reporting, and intelligent gap detection capabilities.
 
 ## 📋 **Table of Contents**
 
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Features](#features)
+- [Enhanced Coverage Analysis](#enhanced-coverage-analysis)
 - [Project Structure](#project-structure)
 - [Installation](#installation)
 - [Running the Project](#running-the-project)
@@ -18,14 +19,17 @@
 
 ## 🎯 **Overview**
 
-The Agent API Testing Platform is a modern, full-stack application designed to streamline API testing workflows. It combines traditional test management capabilities with AI-powered insights, making it easier for developers and QA teams to create comprehensive test suites.
+The Agent API Testing Platform is a modern, full-stack application designed to streamline API testing workflows with advanced AI-powered capabilities. It combines traditional test management with intelligent repository analysis, comprehensive test coverage reporting, and automated gap detection to help development teams build robust, well-tested APIs.
 
 ### **Key Capabilities:**
-- **AI-Driven Test Generation** - Automatically generate tests from GitHub repositories
-- **Smart Test Management** - Full CRUD operations with intelligent suggestions
-- **Postman Integration** - Import and convert Postman collections seamlessly
-- **Professional Reporting** - Export detailed test reports in multiple formats
-- **Real-time Execution** - Execute tests individually or in batches with live results
+- **🔍 Advanced Repository Analysis** - Deep GitHub repository analysis with file-level insights
+- **📊 Comprehensive Test Coverage Reporting** - Detailed coverage analysis for classes, methods, and files
+- **🤖 AI-Powered Gap Detection** - Intelligent identification of testing gaps with prioritized recommendations
+- **📄 Professional Reporting** - Downloadable Word documents with Mermaid class diagrams and coverage visualizations
+- **🧠 Smart Test Generation** - AI-driven test case suggestions based on code analysis
+- **🎯 Priority-Based Recommendations** - Critical, high, and medium priority suggestions for maximum impact
+- **📈 Visual Coverage Diagrams** - Mermaid class diagrams with color-coded coverage indicators
+- **⚡ Real-time Analysis** - Live repository scanning with progress tracking
 
 ## 🏗️ **Architecture**
 
@@ -36,52 +40,64 @@ graph TB
         B[Tab-based Navigation]
         C[Real-time Status Updates]
         D[File Import/Export]
+        E[Coverage Report Downloads]
     end
     
     subgraph "Backend Layer"
-        E[FastAPI Server]
-        F[RESTful API Endpoints]
-        G[CORS Middleware]
-        H[Request Validation]
+        F[FastAPI Server]
+        G[RESTful API Endpoints]
+        H[CORS Middleware]
+        I[Request Validation]
     end
     
     subgraph "Core Services"
-        I[Test Management Service]
-        J[AI Suggestion Engine]
-        K[Import/Export Service]
-        L[Execution Engine]
+        J[Test Management Service]
+        K[AI Suggestion Engine]
+        L[Import/Export Service]
+        M[Execution Engine]
+        N[Coverage Analysis Service]
+        O[Repository Analysis Service]
     end
     
     subgraph "Data Layer"
-        M[In-Memory Storage]
-        N[Test Results Cache]
-        O[Configuration Store]
+        P[In-Memory Storage]
+        Q[Test Results Cache]
+        R[Configuration Store]
+        S[Coverage Reports Storage]
     end
     
     subgraph "External Integrations"
-        P[GitHub API]
-        Q[Postman Collections]
-        R[Word Document Export]
+        T[GitHub API]
+        U[Postman Collections]
+        V[Word Document Export]
+        W[Mermaid Diagram Generation]
     end
     
-    A --> E
-    B --> F
-    C --> G
-    D --> H
+    A --> F
+    B --> G
+    C --> H
+    D --> I
+    E --> G
     
-    E --> I
     F --> J
     G --> K
     H --> L
-    
     I --> M
-    J --> N
-    K --> O
-    L --> M
+    F --> N
+    G --> O
     
     J --> P
     K --> Q
     L --> R
+    M --> P
+    N --> S
+    O --> S
+    
+    K --> T
+    L --> U
+    M --> V
+    N --> W
+    O --> T
 ```
 
 ### **Component Architecture:**
@@ -92,6 +108,7 @@ classDiagram
         +FastAPI app
         +CORSMiddleware middleware
         +InMemoryStorage storage
+        +CoverageReportsStorage coverage_storage
         +initialize()
         +start_server()
     }
@@ -110,6 +127,15 @@ classDiagram
         +get_assertion_suggestions(endpoint, method)
         +get_next_call_suggestions(endpoint, response)
         +analyze_repository(github_url, branch)
+        +generate_ai_test_suggestions(coverage_analysis)
+    }
+    
+    class CoverageAnalysisService {
+        +analyze_repository_structure(github_url, branch)
+        +analyze_test_coverage(repo_structure)
+        +identify_coverage_gaps(coverage_data)
+        +generate_mermaid_diagram(coverage_analysis)
+        +calculate_coverage_percentages()
     }
     
     class ImportExportService {
@@ -117,6 +143,7 @@ classDiagram
         +export_tests(test_ids, format)
         +convert_postman_collection(collection_data)
         +export_word_document(test_ids)
+        +export_coverage_report(coverage_report_id)
     }
     
     class ExecutionService {
@@ -142,24 +169,43 @@ classDiagram
         +Boolean ai_generated
         +Float confidence
         +String source
+        +Dict coverage_target
+        +String priority
+        +String effort_estimate
+    }
+    
+    class CoverageReportModel {
+        +String report_id
+        +String repository_url
+        +String branch
+        +Dict repo_analysis
+        +Dict coverage_analysis
+        +List ai_suggestions
+        +String mermaid_diagram
+        +DateTime generated_at
+        +Float overall_coverage_percentage
     }
     
     class FrontendController {
         +TabManager tab_manager
         +APIClient api_client
         +UIComponents components
+        +CoverageReportDownloader coverage_downloader
         +manage_tests()
         +handle_imports()
         +display_results()
+        +download_coverage_reports()
     }
     
     AgentAPITestingPlatform --> TestManagementService
     AgentAPITestingPlatform --> AIService
+    AgentAPITestingPlatform --> CoverageAnalysisService
     AgentAPITestingPlatform --> ImportExportService
     AgentAPITestingPlatform --> ExecutionService
     
     TestManagementService --> TestModel
     AIService --> TestModel
+    CoverageAnalysisService --> CoverageReportModel
     ImportExportService --> TestModel
     ExecutionService --> TestModel
     
@@ -191,6 +237,193 @@ classDiagram
 - 🔧 **In-line Test Editing** - Edit tests directly in the management interface
 - ⚡ **Real-time Backend Status** - Live connection monitoring with auto-retry
 - � **Responsive Design** - Works on desktop and mobile devices
+
+## 📊 **Enhanced Coverage Analysis**
+
+### **Repository Analysis Engine**
+The platform includes a sophisticated repository analysis engine that provides deep insights into your codebase structure and test coverage.
+
+#### **🔍 Deep Code Analysis Features:**
+- **File Structure Analysis** - Comprehensive scanning of source files, test files, and configuration files
+- **Class & Method Detection** - Automatic identification of classes, methods, and functions
+- **Complexity Scoring** - Assigns complexity scores to identify critical areas requiring tests
+- **Framework Detection** - Auto-detection of frameworks (FastAPI, Django, Flask, etc.)
+- **Language Analysis** - Multi-language support with Python focus
+- **Dependency Mapping** - Identifies external dependencies and their usage
+
+#### **📈 Test Coverage Calculation:**
+```mermaid
+graph LR
+    A[Source Code] --> B[Parse Files]
+    B --> C[Identify Classes/Methods]
+    C --> D[Match Test Files]
+    D --> E[Calculate Coverage %]
+    E --> F[Generate Gap Analysis]
+    F --> G[AI Suggestions]
+    G --> H[Visual Reports]
+```
+
+**Coverage Metrics:**
+- **Overall Coverage Percentage** - Total test coverage across the repository
+- **File-Level Coverage** - Individual file coverage with line-by-line analysis
+- **Class-Level Coverage** - Coverage for each class with method breakdown
+- **Method-Level Coverage** - Function coverage with test mapping
+- **Complexity Impact** - Coverage weighted by code complexity
+
+#### **🤖 AI-Powered Gap Detection:**
+The platform uses advanced AI algorithms to identify testing gaps and provide intelligent recommendations:
+
+**Gap Detection Categories:**
+- **Critical Gaps** - Missing tests for core business logic (Services, Controllers)
+- **High Priority Gaps** - Uncovered complex methods and API endpoints
+- **Medium Priority Gaps** - Utility functions and helper methods
+- **Edge Case Detection** - Identifies potential edge cases requiring tests
+
+**AI Suggestion Types:**
+- **Class Test Suggestions** - Complete test suites for uncovered classes
+- **Method Test Recommendations** - Specific test cases for individual methods
+- **Error Handling Tests** - Exception and error scenario testing
+- **Edge Case Tests** - Boundary condition and limit testing
+- **Integration Tests** - API endpoint and service integration testing
+
+#### **📊 Visual Coverage Diagrams:**
+The platform generates comprehensive Mermaid class diagrams with color-coded coverage indicators:
+
+```mermaid
+classDiagram
+    class UserService {
+        +coverage: 85%
+        +create_user() ✓
+        +update_user() ✓
+        +delete_user() ✗
+        +validate_email() ✓
+    }
+    UserService : <<good_coverage>>
+    
+    class AuthController {
+        +coverage: 45%
+        +login() ✓
+        +logout() ✗
+        +refresh_token() ✗
+        +validate_token() ✗
+    }
+    AuthController : <<poor_coverage>>
+    
+    class DatabaseManager {
+        +coverage: 92%
+        +connect() ✓
+        +execute_query() ✓
+        +close() ✓
+        +backup() ✓
+    }
+    DatabaseManager : <<good_coverage>>
+    
+    UserService --> DatabaseManager : uses
+    AuthController --> UserService : depends
+    
+    classDef good_coverage fill:#d4edda,stroke:#155724,stroke-width:2px
+    classDef poor_coverage fill:#f8d7da,stroke:#721c24,stroke-width:2px
+```
+
+**Legend:**
+- 🟢 **Green** - >80% coverage (Excellent)
+- 🟡 **Yellow** - 50-80% coverage (Good)
+- 🔴 **Red** - <50% coverage (Needs Improvement)
+- ✓ = Method has test coverage
+- ✗ = Method lacks test coverage
+
+#### **📄 Comprehensive Word Reports:**
+Generated reports include:
+
+1. **Executive Summary**
+   - Overall coverage percentage
+   - Critical gaps identified
+   - AI recommendations count
+   - Priority breakdown
+
+2. **Repository Analysis**
+   - File structure breakdown
+   - Detected frameworks and patterns
+   - API endpoints discovered
+   - Complexity analysis
+
+3. **Detailed Coverage Analysis**
+   - File-by-file coverage breakdown
+   - Class and method coverage details
+   - Missing test identification
+   - Priority-based gap analysis
+
+4. **AI-Powered Recommendations**
+   - Specific test case suggestions
+   - Implementation priorities
+   - Effort estimates
+   - Impact scores
+
+5. **Visual Diagrams**
+   - Mermaid class diagrams with coverage
+   - Dependency relationship maps
+   - Coverage trend visualizations
+
+6. **Improvement Strategy**
+   - Step-by-step improvement plan
+   - Tool recommendations
+   - Best practices guidelines
+   - Implementation roadmap
+
+#### **🎯 Usage Example:**
+
+**1. Repository Analysis:**
+```bash
+POST /analyze-repository
+{
+  "github_url": "https://github.com/user/api-project",
+  "branch": "main",
+  "test_description": "Comprehensive API testing analysis"
+}
+```
+
+**2. Response Includes:**
+```json
+{
+  "status": "success",
+  "coverage_report_id": "uuid-12345",
+  "test_coverage_analysis": {
+    "overall_coverage": {
+      "coverage_percentage": 72.5,
+      "total_classes": 15,
+      "covered_classes": 11,
+      "total_methods": 45,
+      "covered_methods": 33
+    },
+    "coverage_gaps": [
+      {
+        "type": "critical_classes",
+        "priority": "critical",
+        "items": ["AuthService", "PaymentController"]
+      }
+    ]
+  },
+  "ai_test_suggestions": {
+    "total_suggestions": 12,
+    "critical_suggestions": 3,
+    "improvement_strategy": ["Focus on Service classes first", "..."]
+  },
+  "mermaid_diagram": "classDiagram...",
+  "generated_tests": [...]
+}
+```
+
+**3. Download Comprehensive Report:**
+```bash
+POST /export/coverage-report
+{
+  "coverage_report_id": "uuid-12345",
+  "include_mermaid_diagram": true,
+  "include_ai_suggestions": true
+}
+```
+
+This enhanced coverage analysis transforms the platform from a simple test runner into a comprehensive code quality and testing strategy tool.
 
 ## � **Project Structure**
 
@@ -292,6 +525,11 @@ uvicorn main_minimal_clean:app --reload --host 0.0.0.0 --port 8000
    ✅ Batch Test Execution
    ✅ Next API Call Recommendations
    ✅ Enhanced Reporting & Analytics
+   ✅ GitHub Repository Analysis
+   ✅ Test Coverage Analysis
+   ✅ AI-Powered Coverage Gap Detection
+   ✅ Mermaid Class Diagrams with Coverage
+   ✅ Comprehensive Word Reports
 
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
@@ -646,10 +884,8 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 }
 ```
 
-### **Repository Analysis Endpoints**
-
 #### `POST /analyze-repository`
-**Description:** Analyze GitHub repository to generate tests  
+**Description:** Enhanced GitHub repository analysis with comprehensive test coverage reporting  
 **Parameters:**
 ```json
 {
@@ -664,8 +900,94 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
   "status": "success",
   "repository": "https://github.com/user/repo",
   "branch": "main",
+  "coverage_report_id": "uuid-12345",
+  "repository_analysis": {
+    "name": "repo-name",
+    "framework": "FastAPI",
+    "language": "Python",
+    "total_files": 25,
+    "source_files": 15,
+    "test_files": 8
+  },
+  "test_coverage_analysis": {
+    "overall_coverage": {
+      "coverage_percentage": 72.5,
+      "total_classes": 15,
+      "covered_classes": 11,
+      "total_methods": 45,
+      "covered_methods": 33
+    },
+    "file_coverage_summary": [...],
+    "coverage_gaps": [...],
+    "uncovered_areas": [...]
+  },
+  "ai_test_suggestions": {
+    "summary": {
+      "total_suggestions": 12,
+      "critical_suggestions": 3,
+      "high_priority_suggestions": 5,
+      "medium_priority_suggestions": 4
+    },
+    "improvement_strategy": [...],
+    "recommended_tools": [...]
+  },
   "generated_tests": [...],
-  "next_steps": "Use /tests endpoints to manage tests"
+  "mermaid_diagram": "classDiagram...",
+  "detailed_analysis": {
+    "endpoints_detected": [...],
+    "source_files_analyzed": 15,
+    "test_files_found": 8,
+    "overall_coverage_score": 72.5,
+    "critical_gaps": 3,
+    "high_priority_gaps": 5
+  }
+}
+```
+
+#### `POST /export/coverage-report`
+**Description:** Export comprehensive test coverage analysis report as Word document  
+**Parameters:**
+```json
+{
+  "coverage_report_id": "uuid-12345",
+  "include_mermaid_diagram": true,
+  "include_ai_suggestions": true
+}
+```
+**Response:**
+```json
+{
+  "status": "success",
+  "document": {
+    "document_id": "uuid",
+    "filename": "coverage_analysis_repo_20240101_120000.docx",
+    "generated_at": "2024-01-01T12:00:00",
+    "pages": 8,
+    "sections": [
+      "Executive Summary",
+      "Repository Analysis", 
+      "Test Coverage Analysis",
+      "AI-Powered Test Suggestions",
+      "Test Coverage Class Diagram"
+    ],
+    "charts_included": true,
+    "total_tests_analyzed": 25,
+    "repository": "https://github.com/user/repo",
+    "overall_coverage": "72.5%",
+    "ai_suggestions_count": 12
+  },
+  "download_url": "/download/coverage/filename.docx",
+  "format": "docx",
+  "preview": "Comprehensive test coverage analysis report",
+  "summary": {
+    "repository": "https://github.com/user/repo",
+    "branch": "main",
+    "overall_coverage_percentage": 72.5,
+    "total_files_analyzed": 15,
+    "critical_gaps": 3,
+    "ai_suggestions": 12,
+    "mermaid_diagram_included": true
+  }
 }
 ```
 
@@ -1044,21 +1366,44 @@ const aiTests = await suggestions.json();
 console.log(`Generated ${aiTests.total_suggestions} test suggestions`);
 ```
 
-### **5. Repository Analysis:**
+### **5. Enhanced Repository Analysis with Coverage:**
 ```javascript
-// Analyze GitHub repository
+// Analyze GitHub repository with comprehensive coverage analysis
 const analysis = await fetch('http://localhost:8000/analyze-repository', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
         github_url: "https://github.com/user/api-project",
         branch: "main",
-        test_description: "REST API endpoints analysis"
+        test_description: "Complete API coverage analysis"
     })
 });
 
 const result = await analysis.json();
-console.log(`Generated ${result.generated_tests.length} tests from repository`);
+console.log(`Coverage Analysis Complete:
+- Generated ${result.generated_tests.length} tests
+- Overall Coverage: ${result.test_coverage_analysis.overall_coverage.coverage_percentage}%
+- Critical Gaps: ${result.detailed_analysis.critical_gaps}
+- AI Suggestions: ${result.ai_test_suggestions.summary.total_suggestions}
+- Coverage Report ID: ${result.coverage_report_id}`);
+
+// Download comprehensive coverage report
+const reportResponse = await fetch('http://localhost:8000/export/coverage-report', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        coverage_report_id: result.coverage_report_id,
+        include_mermaid_diagram: true,
+        include_ai_suggestions: true
+    })
+});
+
+const report = await reportResponse.json();
+console.log(`Coverage Report Generated: ${report.document.filename}
+- Pages: ${report.document.pages}
+- Sections: ${report.document.sections.join(', ')}
+- Overall Coverage: ${report.summary.overall_coverage_percentage}%
+- Mermaid Diagram: ${report.summary.mermaid_diagram_included ? 'Included' : 'Not included'}`);
 ```
 
 ## 🔧 **Troubleshooting**

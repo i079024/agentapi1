@@ -139,6 +139,25 @@
         .status-offline {
             background: #e74c3c;
         }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .download-confirmation {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .download-details {
+            font-size: 14px;
+            color: #495057;
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -316,6 +335,7 @@
                     <button onclick="exportTests()" class="btn">📤 Export All Tests</button>
                     <button onclick="showImportDialog()" class="btn">📥 Import Tests</button>
                     <button onclick="exportWordReport()" class="btn">📄 Export Word Report</button>
+                    <button onclick="downloadCoverageReport()" class="btn" style="background: #28a745;">📊 Download Coverage Report</button>
                     <button onclick="createSampleTests()" class="btn">🎯 Create Sample Tests</button>
                     <button onclick="showPostmanImportHelp()" class="btn">📂 Import Postman Collection</button>
                 </div>
@@ -443,51 +463,117 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8000';
+        // API Configuration with multiple port fallback
+        let API_BASE = 'http://localhost:8000';
+        const POSSIBLE_PORTS = [8000, 8001, 8002];
         
-        // Check backend status
+        // Enhanced backend status checking with multiple ports
         async function checkBackendStatus() {
-            try {
-                console.log('Checking backend status at:', API_BASE);
-                const response = await fetch(`${API_BASE}/health`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    mode: 'cors'
-                });
+            const statusElement = document.getElementById('backend-status');
+            
+            console.log('🔍 Checking backend status...');
+            statusElement.innerHTML = '<span style="color: orange;">🔄 Connecting...</span>';
+            
+            // Try each port
+            for (const port of POSSIBLE_PORTS) {
+                const testUrl = `http://localhost:${port}`;
+                console.log(`Trying port ${port}...`);
                 
-                console.log('Backend response status:', response.status);
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Backend health check result:', result);
+                try {
+                    const response = await fetch(`${testUrl}/health`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                        mode: 'cors',
+                        signal: AbortSignal.timeout(3000) // 3 second timeout per port
+                    });
                     
-                    document.getElementById('backend-status').innerHTML = 
-                        `<span style="color: green;">✅ Connected</span> - ${result.message}`;
-                    return true;
+                    if (response.ok) {
+                        const result = await response.json();
+                        API_BASE = testUrl; // Update global API base
+                        
+                        statusElement.innerHTML = 
+                            `<span style="color: green;">✅ Connected</span> (Port ${port}) - ${result.message}`;
+                        
+                        console.log(`✅ Backend connected on port ${port}`);
+                        return true;
+                    }
+                } catch (error) {
+                    console.log(`❌ Port ${port} failed:`, error.message);
+                }
+            }
+            
+            // No backend found on any port
+            statusElement.innerHTML = `
+                <span style="color: red;">❌ Backend Not Found</span><br>
+                <small style="display: block; margin-top: 5px;">
+                    <strong>Quick Fix:</strong><br>
+                    1. Run: <code style="background: #f1f1f1; padding: 2px 4px;">python main_minimal_clean.py</code><br>
+                    2. Or try: <code style="background: #f1f1f1; padding: 2px 4px;">./emergency_start.sh</code><br>
+                    3. Check ports: ${POSSIBLE_PORTS.join(', ')}<br>
+                    <button onclick="retryConnection()" style="margin-top: 5px; padding: 3px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                        🔄 Retry Connection
+                    </button>
+                </small>
+            `;
+            
+            console.log('❌ No backend found on any port');
+            return false;
+        }
+        
+        // Manual connection retry function
+        function retryConnection() {
+            document.getElementById('backend-status').innerHTML = 
+                '<span style="color: orange;">🔄 Retrying connection...</span>';
+            setTimeout(() => {
+                checkBackendStatus();
+            }, 1000);
+        }
+        
+        // Enhanced initialization with timeout and retry
+        async function initApp() {
+            console.log('Initializing Agent API Testing Platform...');
+            document.getElementById('backend-status').innerHTML = 
+                '<span style="color: orange;">🔄 Checking connection...</span>';
+            
+            // Attach form handlers
+            attachFormHandlers();
+            
+            // Add timeout to prevent infinite checking
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Connection timeout after 10 seconds')), 10000)
+            );
+            
+            try {
+                const connected = await Promise.race([checkBackendStatus(), timeoutPromise]);
+                
+                if (connected) {
+                    console.log('Backend connected successfully');
+                    // Load initial data
+                    loadTests();
                 } else {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    console.log('Backend connection failed');
                 }
             } catch (error) {
-                console.error('Backend connection error:', error);
+                console.error('Initialization error:', error);
                 document.getElementById('backend-status').innerHTML = 
-                    `<span style="color: red;">❌ Disconnected</span> - ${error.message}<br>
-                    <small>Make sure to run: <code>python main_minimal_clean.py</code></small>`;
-                return false;
+                    `<span style="color: red;">❌ Connection Failed</span> - ${error.message}<br>
+                    <small style="display: block; margin-top: 10px;">
+                    <strong>Troubleshooting:</strong><br>
+                    1. Make sure backend is running: <code>python main_minimal_clean.py</code><br>
+                    2. Check if port 8000 is available<br>
+                    3. Try refreshing the page<br>
+                    4. Check browser console for errors (F12)
+                    </small>`;
             }
-        }        // Initialize
-        window.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, starting initialization...');
-            initApp();
-        });
-        
-        // Also try immediate initialization in case DOM is already loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            // DOM is already loaded
-            initApp();
+            
+            // Set up periodic status checks
+            setInterval(async () => {
+                const currentStatus = document.getElementById('backend-status').innerHTML;
+                if (currentStatus.includes('❌')) {
+                    console.log('Retrying backend connection...');
+                    await checkBackendStatus();
+                }
+            }, 30000); // Check every 30 seconds if disconnected
         }
         
         // Form handlers (moved to initApp function)
@@ -938,6 +1024,12 @@
             const description = document.getElementById('test-description').value;
             
             try {
+                // Show loading state
+                const analyzeBtn = document.getElementById('analyze-btn');
+                const originalText = analyzeBtn.textContent;
+                analyzeBtn.textContent = '🔍 Analyzing Repository...';
+                analyzeBtn.disabled = true;
+                
                 const response = await fetch(`${API_BASE}/analyze-repository`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -951,13 +1043,173 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    alert(`Analysis complete! Generated ${result.generated_tests.length} tests.`);
+                    // Store coverage report ID for later use
+                    if (result.coverage_report_id) {
+                        sessionStorage.setItem('latest_coverage_report_id', result.coverage_report_id);
+                    }
+                    
+                    // Display enhanced results
+                    const analysisInfo = `📊 Repository Analysis Complete!
+                    
+🔗 Repository: ${result.repository}
+🌿 Branch: ${result.branch}
+📈 Overall Coverage: ${result.test_coverage_analysis.overall_coverage.coverage_percentage.toFixed(1)}%
+📁 Source Files: ${result.detailed_analysis.source_files_analyzed}
+🧪 Test Files: ${result.detailed_analysis.test_files_found}
+🎯 Generated Tests: ${result.generated_tests.length}
+⚠️  Critical Gaps: ${result.detailed_analysis.critical_gaps}
+🔥 High Priority Gaps: ${result.detailed_analysis.high_priority_gaps}
+🤖 AI Suggestions: ${result.ai_test_suggestions.total_suggestions}
+
+Coverage Report ID: ${result.coverage_report_id}
+Mermaid Diagram: Generated ✓
+
+Use the "📄 Download Coverage Report" button to get detailed Word document with:
+• Executive Summary
+• File-by-file coverage analysis  
+• AI-powered test suggestions
+• Mermaid class diagrams
+• Improvement strategies`;
+                    
+                    alert(analysisInfo);
                     console.log('Analysis result:', result);
+                    
+                    // Update UI to show download option
+                    showCoverageDownloadOption(result.coverage_report_id);
                 } else {
                     throw new Error(result.detail || 'Analysis failed');
                 }
             } catch (error) {
                 alert(`Analysis failed: ${error.message}`);
+            } finally {
+                // Reset button state
+                const analyzeBtn = document.getElementById('analyze-btn');
+                analyzeBtn.textContent = '🔍 Analyze Repository';
+                analyzeBtn.disabled = false;
+            }
+        }
+        
+        function showDownloadNotification(message, type = 'success') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                z-index: 10001;
+                max-width: 400px;
+                font-size: 14px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.innerHTML = message;
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+        }
+        
+        // Add CSS animations for notifications
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        function showCoverageDownloadOption(coverageReportId) {
+            // Add download button if not already present
+            const existingBtn = document.getElementById('download-coverage-btn');
+            if (existingBtn) {
+                existingBtn.remove();
+            }
+            
+            const downloadBtn = document.createElement('button');
+            downloadBtn.id = 'download-coverage-btn';
+            downloadBtn.className = 'btn';
+            downloadBtn.innerHTML = '📄 Download Coverage Report';
+            downloadBtn.onclick = () => confirmAndDownloadCoverageReport(coverageReportId);
+            downloadBtn.style.marginTop = '10px';
+            downloadBtn.style.backgroundColor = '#28a745';
+            downloadBtn.style.color = 'white';
+            downloadBtn.style.border = 'none';
+            downloadBtn.style.borderRadius = '4px';
+            downloadBtn.style.padding = '8px 16px';
+            downloadBtn.style.cursor = 'pointer';
+            
+            // Add after the analyze button
+            const analyzeBtn = document.getElementById('analyze-btn');
+            analyzeBtn.parentNode.insertBefore(downloadBtn, analyzeBtn.nextSibling);
+        }
+        
+        async function confirmAndDownloadCoverageReport(coverageReportId) {
+            try {
+                // Show a more detailed confirmation dialog
+                const confirmDialog = `🤔 Download Coverage Analysis Report?
+                
+This will generate and download a comprehensive Word document containing:
+
+📊 Executive Summary
+   • Overall coverage percentage and key metrics
+   • Critical findings and priority gaps
+   • Coverage grade and recommendations
+
+🔍 Repository Analysis  
+   • File structure and framework detection
+   • Detected API endpoints
+   • Source and test file analysis
+
+📈 Detailed Coverage Analysis
+   • File-by-file coverage breakdown
+   • Class and method coverage details
+   • Gap identification with priorities
+
+🤖 AI-Powered Recommendations
+   • Specific test case suggestions
+   • Implementation priorities and effort estimates
+   • Improvement strategies
+
+🎨 Visual Diagrams
+   • Mermaid class diagrams with coverage indicators
+   • Dependency relationship maps
+
+📋 Implementation Roadmap
+   • Step-by-step improvement plan
+   • Success metrics and milestones
+
+The document will be 2-5 MB and saved to your Downloads folder.
+
+Do you want to proceed with the download?`;
+                
+                const userConfirmed = confirm(confirmDialog);
+                
+                if (userConfirmed) {
+                    // Store the coverage report ID and proceed with download
+                    sessionStorage.setItem('latest_coverage_report_id', coverageReportId);
+                    await downloadCoverageReport();
+                }
+            } catch (error) {
+                alert(`Error preparing download: ${error.message}`);
             }
         }
         
@@ -1140,6 +1392,162 @@
             }
         }
         
+        async function downloadCoverageReport() {
+            try {
+                // Get the latest coverage report ID from sessionStorage if available
+                const coverageReportId = sessionStorage.getItem('latest_coverage_report_id');
+                
+                if (!coverageReportId) {
+                    alert('No coverage report available. Please analyze a repository first.');
+                    return;
+                }
+                
+                // First, prepare the report
+                const response = await fetch(`${API_BASE}/export/coverage-report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        coverage_report_id: coverageReportId,
+                        include_mermaid_diagram: true,
+                        include_ai_suggestions: true
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const summary = result.summary;
+                    const confirmation = result.download_confirmation;
+                    
+                    // Show confirmation dialog with details
+                    const confirmMessage = `📊 Coverage Analysis Report Ready for Download!
+                    
+📁 Repository: ${summary.repository}
+🌿 Branch: ${summary.branch}
+📈 Overall Coverage: ${summary.overall_coverage_percentage}%
+📊 Files Analyzed: ${summary.total_files_analyzed}
+⚠️  Critical Gaps: ${summary.critical_gaps}
+🤖 AI Suggestions: ${summary.ai_suggestions}
+📄 Mermaid Diagram: ${summary.mermaid_diagram_included ? 'Included' : 'Not included'}
+
+📄 File Details:
+• Filename: ${result.document.filename}
+• Pages: ${result.document.pages}
+• Estimated Size: ${confirmation.file_size_estimate}
+• Sections: ${result.document.sections.join(', ')}
+
+📋 Report Includes:
+${confirmation.includes.filter(item => item !== null).map(item => `• ${item}`).join('\n')}
+
+Do you want to download this comprehensive coverage report?`;
+                    
+                    const userConfirmed = confirm(confirmMessage);
+                    
+                    if (userConfirmed) {
+                        // User confirmed, proceed with download
+                        await performActualDownload(result.document.document_id, result.download_filename);
+                    } else {
+                        // User cancelled
+                        alert('Download cancelled. The report is still available and can be downloaded later.');
+                    }
+                } else {
+                    throw new Error(result.detail || 'Coverage report export failed');
+                }
+            } catch (error) {
+                alert(`Coverage report export failed: ${error.message}`);
+            }
+        }
+        
+        async function performActualDownload(documentId, filename) {
+            try {
+                // Show download progress
+                showDownloadProgress(true);
+                
+                // Download the file
+                const downloadResponse = await fetch(`${API_BASE}/download/coverage/${documentId}`, {
+                    method: 'GET'
+                });
+                
+                if (downloadResponse.ok) {
+                    // Create blob and download
+                    const blob = await downloadResponse.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    // Create temporary download link
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Cleanup
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    // Show success message
+                    showDownloadProgress(false);
+                    showDownloadNotification(`✅ Coverage report downloaded successfully!
+📄 File: ${filename}
+💾 Saved to your Downloads folder`, 'success');
+                    
+                    // Store download info
+                    const downloadInfo = {
+                        filename: filename,
+                        downloadedAt: new Date().toISOString(),
+                        documentId: documentId
+                    };
+                    sessionStorage.setItem('latest_download', JSON.stringify(downloadInfo));
+                    
+                } else {
+                    throw new Error('Download failed from server');
+                }
+                
+            } catch (error) {
+                showDownloadProgress(false);
+                alert(`Download failed: ${error.message}`);
+            }
+        }
+        
+        function showDownloadProgress(show) {
+            // Create or remove progress indicator
+            const existingProgress = document.getElementById('download-progress');
+            
+            if (show) {
+                if (!existingProgress) {
+                    const progressDiv = document.createElement('div');
+                    progressDiv.id = 'download-progress';
+                    progressDiv.style.cssText = `
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: white;
+                        border: 2px solid #007bff;
+                        border-radius: 8px;
+                        padding: 20px;
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                        z-index: 10000;
+                        text-align: center;
+                    `;
+                    progressDiv.innerHTML = `
+                        <div style="margin-bottom: 10px;">📄 Preparing Coverage Report...</div>
+                        <div style="font-size: 12px; color: #666;">Generating comprehensive analysis document</div>
+                        <div style="margin-top: 10px;">
+                            <div style="width: 200px; height: 4px; background: #eee; border-radius: 2px; overflow: hidden;">
+                                <div style="width: 100%; height: 100%; background: #007bff; animation: pulse 1.5s infinite;"></div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(progressDiv);
+                }
+            } else {
+                if (existingProgress) {
+                    existingProgress.remove();
+                }
+            }
+        }
+        
         async function createSampleTests() {
             try {
                 const response = await fetch(`${API_BASE}/create-sample-tests`, {
@@ -1304,8 +1712,17 @@ Try it now with your Postman collections!`);
         
         // Initialize the app when page loads
         window.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, starting initialization...');
             initApp();
         });
+        
+        // Also try immediate initialization in case DOM is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            // DOM is already loaded
+            initApp();
+        }
     </script>
 </body>
 </html>
