@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Backend Connection Diagnostic Tool</h1>
+    
+    <div class="info">
+        <strong>Testing connection to:</strong> http://localhost:8000
+    </div>
+    
+    <button onclick="testConnection()">🔍 Test Connection</button>
+    <button onclick="testCORS()">🌐 Test CORS</button>
+    <button onclick="testAllEndpoints()">🎯 Test All Endpoints</button>
+    <button onclick="clearResults()">🧹 Clear Results</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testConnection() {
+            addResult('<strong>🔍 Testing Basic Connection...</strong>');
+            
+            try {
+                console.log('Testing connection to:', API_BASE + '/health');
+                
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                addResult(`✅ Connection successful! Status: ${response.status}`, 'success');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+                } else {
+                    addResult(`❌ Server returned error: ${response.status} ${response.statusText}`, 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ Connection failed: ${error.message}`, 'error');
+                addResult(`Error details: ${error.stack}`, 'error');
+                
+                // Provide specific help based on error type
+                if (error.message.includes('fetch')) {
+                    addResult(`💡 <strong>Solution:</strong> Backend server is not running. Start it with: <code>python main_enhanced_import.py</code>`, 'info');
+                } else if (error.message.includes('CORS')) {
+                    addResult(`💡 <strong>Solution:</strong> CORS issue. Check backend CORS configuration.`, 'info');
+                }
+            }
+        }
+        
+        async function testCORS() {
+            addResult('<strong>🌐 Testing CORS Configuration...</strong>');
+            
+            try {
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'OPTIONS'
+                });
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                };
+                
+                addResult(`✅ CORS headers received:`, 'success');
+                addResult(`<pre>${JSON.stringify(corsHeaders, null, 2)}</pre>`, 'info');
+                
+            } catch (error) {
+                addResult(`❌ CORS test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAllEndpoints() {
+            addResult('<strong>🎯 Testing All Endpoints...</strong>');
+            
+            const endpoints = [
+                '/health',
+                '/status', 
+                '/tests',
+                '/docs',
+                '/'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${API_BASE}${endpoint}`);
+                    const status = response.ok ? '✅' : '❌';
+                    addResult(`${status} ${endpoint}: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                } catch (error) {
+                    addResult(`❌ ${endpoint}: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        // Auto-run basic test on page load
+        window.onload = function() {
+            addResult('<strong>🚀 Backend Connection Diagnostic Started</strong>');
+            testConnection();
+        };
+    </script>
+</body>
+</html>

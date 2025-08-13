@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent API Testing Platform - Working Tabs</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: #007bff; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .status-bar { padding: 15px 20px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+        .status-indicator { font-weight: bold; }
+        
+        .tabs { display: flex; background: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+        .tab-btn { background: #6c757d; color: white; border: none; padding: 12px 20px; margin: 0; cursor: pointer; }
+        .tab-btn:hover { background: #5a6268; }
+        .tab-btn.active { background: #007bff; }
+        
+        .tab-content { display: none; padding: 20px; }
+        .tab-content.active { display: block; }
+        
+        .btn { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #0056b3; }
+        .test-item { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Agent API Testing Platform</h1>
+            <p>Enhanced Postman Collection Import & AI-Powered Reports</p>
+        </div>
+        
+        <div class="status-bar">
+            <span id="backend-status" class="status-indicator">Connecting to backend...</span>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('test-management')">📋 Test Management</button>
+            <button class="tab-btn" onclick="showTab('auto-generate')">🤖 Auto-Generate Tests</button>
+            <button class="tab-btn" onclick="showTab('manual-create')">✏️ Manual Create</button>
+            <button class="tab-btn" onclick="showTab('ai-suggestions')">🧠 AI Suggestions</button>
+        </div>
+        
+        <div id="test-management" class="tab-content active">
+            <h3>📋 Test Management</h3>
+            <div style="margin-bottom: 20px;">
+                <button onclick="checkConnection()" class="btn">🔍 Test Connection</button>
+                <button onclick="loadTests()" class="btn">🔄 Refresh Tests</button>
+                <button onclick="showImportDialog()" class="btn">📥 Import Tests</button>
+                <button onclick="executeAllTests()" class="btn">⚡ Execute All</button>
+                <button onclick="generateAIReport()" class="btn" style="background: #6f42c1;">🤖 AI Report</button>
+            </div>
+            <div id="test-list">
+                <p>Loading tests...</p>
+            </div>
+        </div>
+        
+        <div id="auto-generate" class="tab-content">
+            <h3>🤖 Auto-Generate Tests</h3>
+            <p>This feature automatically generates API tests based on code analysis.</p>
+            <button class="btn">🔍 Analyze Repository</button>
+        </div>
+        
+        <div id="manual-create" class="tab-content">
+            <h3>✏️ Manual Test Creation</h3>
+            <p>Create tests manually with full control over parameters.</p>
+            <button class="btn">➕ New Test</button>
+        </div>
+        
+        <div id="ai-suggestions" class="tab-content">
+            <h3>🧠 AI Suggestions</h3>
+            <p>AI-powered recommendations for your API testing strategy.</p>
+            <button class="btn">💡 Get Suggestions</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        console.log('🚀 Frontend started, API_BASE:', API_BASE);
+        
+        // Tab management function - THIS IS THE MISSING FUNCTION
+        function showTab(tabName) {
+            console.log('🔄 Switching to tab:', tabName);
+            
+            // Hide all tab content
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            const selectedTab = document.getElementById(tabName);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+            
+            // Activate the clicked tab button
+            event.target.classList.add('active');
+        }
+        
+        // Enhanced backend status check
+        async function checkBackendStatus() {
+            const statusEl = document.getElementById('backend-status');
+            
+            try {
+                statusEl.textContent = 'Connecting to backend...';
+                statusEl.style.color = '#ffc107';
+                
+                console.log('📡 Testing connection to:', API_BASE + '/health');
+                
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'cors'
+                });
+                
+                console.log('📋 Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Health data:', data);
+                    
+                    statusEl.textContent = `Backend: ✅ Connected (${data.stored_tests || 0} tests)`;
+                    statusEl.style.color = '#28a745';
+                    
+                    // Auto-load tests
+                    loadTests();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Connection failed:', error);
+                statusEl.innerHTML = `Backend: ❌ Not Connected - <button onclick="checkConnection()" style="padding:2px 6px;font-size:11px;">Retry</button>`;
+                statusEl.style.color = '#dc3545';
+            }
+        }
+        
+        // Manual connection test
+        async function checkConnection() {
+            console.log('🔍 Manual connection test triggered');
+            await checkBackendStatus();
+        }
+        
+        // Load tests
+        async function loadTests() {
+            const testList = document.getElementById('test-list');
+            
+            try {
+                console.log('📝 Loading tests...');
+                const response = await fetch(`${API_BASE}/tests`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('📊 Tests loaded:', data.total);
+                
+                if (data.tests && data.tests.length > 0) {
+                    testList.innerHTML = data.tests.map(test => `
+                        <div class="test-item">
+                            <strong>${test.name}</strong><br>
+                            <code>${test.method} ${test.endpoint}</code><br>
+                            <small>Collection: ${test.collection || 'default'}</small><br>
+                            <button onclick="executeTest('${test.id}')" class="btn" style="margin-top:10px;">▶️ Execute</button>
+                        </div>
+                    `).join('');
+                } else {
+                    testList.innerHTML = '<p>No tests found. Import some tests to get started!</p>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to load tests:', error);
+                testList.innerHTML = `<p style="color: red;">Failed to load tests: ${error.message}</p>`;
+            }
+        }
+        
+        // Import dialog
+        function showImportDialog() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            importTests(data);
+                        } catch (error) {
+                            alert('Invalid JSON file: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+        
+        // Import tests
+        async function importTests(data) {
+            try {
+                console.log('📤 Importing tests:', data);
+                
+                const response = await fetch(`${API_BASE}/import/tests`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tests: data })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ Successfully imported ${result.imported_tests} test(s)!`);
+                    loadTests(); // Refresh
+                    checkBackendStatus(); // Update count
+                } else {
+                    throw new Error(result.detail || 'Import failed');
+                }
+                
+            } catch (error) {
+                alert('Import failed: ' + error.message);
+            }
+        }
+        
+        // Execute single test
+        async function executeTest(testId) {
+            try {
+                const response = await fetch(`${API_BASE}/execute-test/${testId}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const success = result.execution.success ? '✅ PASSED' : '❌ FAILED';
+                    alert(`${success}\n\nTest: ${result.test.name}\nStatus: ${result.execution.status_code}\nTime: ${result.execution.execution_time}s`);
+                } else {
+                    throw new Error(result.detail || 'Execution failed');
+                }
+                
+            } catch (error) {
+                alert('Execution failed: ' + error.message);
+            }
+        }
+        
+        // Execute all tests
+        async function executeAllTests() {
+            if (!confirm('Execute all tests?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/execute-all-tests`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const summary = result.summary;
+                    alert(`✅ Execution Complete!\n\nTotal: ${summary.total_tests}\nPassed: ${summary.passed}\nFailed: ${summary.failed}\nSuccess Rate: ${summary.success_rate}%`);
+                    
+                    // Store for AI report
+                    sessionStorage.setItem('execution_results', JSON.stringify(result));
+                } else {
+                    throw new Error(result.detail || 'Execution failed');
+                }
+                
+            } catch (error) {
+                alert('Execution failed: ' + error.message);
+            }
+        }
+        
+        // Generate AI report
+        async function generateAIReport() {
+            const results = sessionStorage.getItem('execution_results');
+            if (!results) {
+                alert('No execution results. Please run tests first.');
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(results);
+                const response = await fetch(`${API_BASE}/generate-ai-report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        execution_results: data.results,
+                        collection_name: 'API Tests'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`🤖 AI Report Generated!\n\nFile: ${result.report.filename}\nSaved to: ${result.report.filepath}\n\nIncludes AI suggestions and recommendations!`);
+                } else {
+                    throw new Error(result.detail || 'Report generation failed');
+                }
+                
+            } catch (error) {
+                alert('Report generation failed: ' + error.message);
+            }
+        }
+        
+        // Initialize on page load
+        window.onload = function() {
+            console.log('🎯 Initializing frontend...');
+            checkBackendStatus();
+        };
+    </script>
+</body>
+</html>

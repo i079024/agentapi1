@@ -338,6 +338,8 @@
                     <button onclick="downloadCoverageReport()" class="btn" style="background: #28a745;">📊 Download Coverage Report</button>
                     <button onclick="createSampleTests()" class="btn">🎯 Create Sample Tests</button>
                     <button onclick="showPostmanImportHelp()" class="btn">📂 Import Postman Collection</button>
+                    <button onclick="executeAllTests()" class="btn" style="background: #007bff;">⚡ Execute All Tests</button>
+                    <button onclick="generateAIReport()" class="btn" style="background: #6f42c1;">🤖 Generate AI Report</button>
                 </div>
                 
                 <div id="tests-list">
@@ -467,6 +469,30 @@
         let API_BASE = 'http://localhost:8000';
         const POSSIBLE_PORTS = [8000, 8001, 8002];
         
+        // Tab Management - MUST BE DEFINED FIRST
+        function showTab(tabName) {
+            console.log('🔄 Switching to tab:', tabName);
+            
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            const selectedTab = document.getElementById(tabName);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+            
+            // Activate the clicked tab button
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+        }
+        
         // Enhanced backend status checking with multiple ports
         async function checkBackendStatus() {
             const statusElement = document.getElementById('backend-status');
@@ -595,21 +621,6 @@
         
         // NEW FEATURE FUNCTIONS
         
-        // Tab Management
-        function showTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Show selected tab
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-        
         // Assertion Management
         function addAssertion() {
             const container = document.getElementById('assertions-container');
@@ -718,6 +729,7 @@
                         <button onclick="editTest('${test.id}')" class="btn">✏️ Edit</button>
                         <button onclick="deleteTest('${test.id}')" class="btn">🗑️ Delete</button>
                         <button onclick="duplicateTest('${test.id}')" class="btn">📋 Duplicate</button>
+                        <button onclick="executeCollection('${test.collection}')" class="btn" style="background: #17a2b8;">🚀 Execute Collection</button>
                     </div>
                 </div>
             `).join('');
@@ -1301,23 +1313,23 @@ Do you want to proceed with the download?`;
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.json';
-            input.onchange = (e) => {
-                const file = e.target.files[0];
+            input.onchange = function(event) {
+                const file = event.target.files[0];
                 if (file) {
                     const reader = new FileReader();
-                    reader.onload = (e) => {
+                    reader.onload = function(readerEvent) {
                         try {
-                            const importData = JSON.parse(e.target.result);
+                            const importData = JSON.parse(readerEvent.target.result);
                             console.log('Importing file:', file.name, 'Data:', importData);
                             
                             // Check if it's a Postman collection
                             if (importData.info && importData.item) {
                                 console.log('Detected Postman collection:', importData.info.name);
                                 if (confirm(`Detected Postman Collection: "${importData.info.name}"\n\nThis will convert ${importData.item.length} items to API tests.\n\nProceed with import?`)) {
-                                    importTests(importData);
+                                    processImportData(importData);
                                 }
                             } else {
-                                importTests(importData);
+                                processImportData(importData);
                             }
                         } catch (error) {
                             alert(`Failed to parse JSON file: ${error.message}`);
@@ -1329,19 +1341,42 @@ Do you want to proceed with the download?`;
             input.click();
         }
         
-        async function importTests(importData) {
+        async function processImportData(importData) {
             try {
-                console.log('Importing data:', importData);
+                console.log('=== IMPORT DEBUG ===');
+                console.log('Raw import data:', importData);
+                console.log('Import data type:', typeof importData);
+                console.log('Import data keys:', Object.keys(importData));
+                
+                // Prepare the data for backend
+                let dataToSend;
+                
+                // Check if it's already our format or needs wrapping
+                if (Array.isArray(importData)) {
+                    console.log('Data is array, sending directly');
+                    dataToSend = { tests: importData };
+                } else if (importData.info && importData.item) {
+                    console.log('Data is Postman collection');
+                    dataToSend = { tests: importData };
+                } else if (importData.tests && Array.isArray(importData.tests)) {
+                    console.log('Data is export format');
+                    dataToSend = { tests: importData };
+                } else {
+                    console.log('Data is single object, wrapping in array');
+                    dataToSend = { tests: [importData] };
+                }
+                
+                console.log('Sending to backend:', dataToSend);
                 
                 // Send the data directly to the backend - let it handle format detection
                 const response = await fetch(`${API_BASE}/import/tests`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tests: importData })
+                    body: JSON.stringify(dataToSend)
                 });
                 
                 const result = await response.json();
-                console.log('Import response:', result);
+                console.log('Backend response:', result);
                 
                 if (response.ok) {
                     let message = `Successfully imported ${result.imported_tests} test(s)!`;
@@ -1351,6 +1386,15 @@ Do you want to proceed with the download?`;
                             message += `\n... and ${result.errors.length - 5} more errors`;
                         }
                     }
+                    
+                    // Show preview of imported tests
+                    if (result.tests && result.tests.length > 0) {
+                        message += `\n\nFirst imported test:\n`;
+                        message += `Name: ${result.tests[0].name}\n`;
+                        message += `Method: ${result.tests[0].method}\n`;
+                        message += `Endpoint: ${result.tests[0].endpoint}`;
+                    }
+                    
                     alert(message);
                     loadTests(); // Refresh the list
                 } else {
@@ -1710,19 +1754,163 @@ Try it now with your Postman collections!`);
             }
         }
         
-        // Initialize the app when page loads
-        window.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, starting initialization...');
+        // Execute all tests
+        async function executeAllTests() {
+            if (!confirm('Execute all tests? This may take some time depending on the number of tests.')) {
+                return;
+            }
+            
+            try {
+                showExecutionProgress('Executing all tests...');
+                
+                const response = await fetch(`${API_BASE}/execute-all-tests`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                hideExecutionProgress();
+                
+                if (response.ok) {
+                    const summary = result.summary;
+                    alert(`✅ Batch Execution Complete!\n\nTotal Tests: ${summary.total_tests}\nPassed: ${summary.passed}\nFailed: ${summary.failed}\nSuccess Rate: ${summary.success_rate}%\n\nClick "Generate AI Report" for detailed analysis!`);
+                    
+                    // Store results for report generation
+                    sessionStorage.setItem('last_execution_results', JSON.stringify(result));
+                } else {
+                    throw new Error(result.detail || 'Batch execution failed');
+                }
+            } catch (error) {
+                hideExecutionProgress();
+                alert(`Batch execution failed: ${error.message}`);
+            }
+        }
+        
+        // Execute collection
+        async function executeCollection(collectionName) {
+            if (!confirm(`Execute all tests in collection "${collectionName}"?`)) {
+                return;
+            }
+            
+            try {
+                showExecutionProgress(`Executing collection: ${collectionName}...`);
+                
+                const response = await fetch(`${API_BASE}/execute-collection/${encodeURIComponent(collectionName)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                hideExecutionProgress();
+                
+                if (response.ok) {
+                    const summary = result.summary;
+                    alert(`✅ Collection "${collectionName}" Execution Complete!\n\nTotal Tests: ${summary.total_tests}\nPassed: ${summary.passed}\nFailed: ${summary.failed}\nSuccess Rate: ${summary.success_rate}%`);
+                    
+                    // Store results for report generation
+                    sessionStorage.setItem('last_execution_results', JSON.stringify(result));
+                } else {
+                    throw new Error(result.detail || 'Collection execution failed');
+                }
+            } catch (error) {
+                hideExecutionProgress();
+                alert(`Collection execution failed: ${error.message}`);
+            }
+        }
+        
+        // Generate AI Report
+        async function generateAIReport() {
+            const lastResults = sessionStorage.getItem('last_execution_results');
+            
+            if (!lastResults) {
+                alert('No execution results available. Please execute some tests first using "Execute All Tests" or "Execute Collection".');
+                return;
+            }
+            
+            try {
+                const executionData = JSON.parse(lastResults);
+                
+                showExecutionProgress('Generating AI-powered report with recommendations...');
+                
+                const requestPayload = {
+                    execution_results: executionData.results,
+                    collection_name: executionData.collection || 'API Test Suite'
+                };
+                
+                const response = await fetch(`${API_BASE}/generate-ai-report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestPayload)
+                });
+                
+                const result = await response.json();
+                hideExecutionProgress();
+                
+                if (response.ok) {
+                    const report = result.report;
+                    
+                    alert(`🤖 AI Report Generated Successfully!\n\nReport: ${report.filename}\nFormat: ${report.format || 'Word Document'}\nGenerated: ${new Date(report.generated_at).toLocaleString()}\n\nThe report includes:\n• Test execution summary\n• Detailed results for each test\n• AI-suggested next API calls\n• Performance insights\n• Security recommendations\n\nReport saved to: ${report.filepath}`);
+                    
+                } else {
+                    throw new Error(result.detail || 'Report generation failed');
+                }
+            } catch (error) {
+                hideExecutionProgress();
+                alert(`Report generation failed: ${error.message}\n\nNote: For Word format, install: pip install python-docx`);
+            }
+        }
+        
+        // Show execution progress
+        function showExecutionProgress(message) {
+            const progressDiv = document.createElement('div');
+            progressDiv.id = 'execution-progress';
+            progressDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                border: 2px solid #007bff;
+                border-radius: 8px;
+                padding: 20px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                z-index: 10000;
+                text-align: center;
+                min-width: 300px;
+            `;
+            progressDiv.innerHTML = `
+                <div style="margin-bottom: 15px; font-weight: bold;">${message}</div>
+                <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px; overflow: hidden;">
+                    <div style="width: 100%; height: 100%; background: #007bff; animation: pulse 1.5s infinite;"></div>
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: #666;">Please wait...</div>
+            `;
+            document.body.appendChild(progressDiv);
+        }
+        
+        // Hide execution progress
+        function hideExecutionProgress() {
+            const progressDiv = document.getElementById('execution-progress');
+            if (progressDiv) {
+                progressDiv.remove();
+            }
+        }
+        
+        // Initialize the application when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 DOM loaded, initializing app...');
             initApp();
         });
         
-        // Also try immediate initialization in case DOM is already loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            // DOM is already loaded
-            initApp();
-        }
+        // Fallback initialization
+        window.addEventListener('load', function() {
+            console.log('🔄 Window loaded, checking if app initialized...');
+            const statusElement = document.getElementById('backend-status');
+            if (statusElement && statusElement.textContent === 'Checking...') {
+                console.log('⚠️ App not initialized, running fallback init...');
+                initApp();
+            }
+        });
     </script>
 </body>
 </html>

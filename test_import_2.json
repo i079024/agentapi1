@@ -1,0 +1,28 @@
+{
+  "export_info": {
+    "exported_at": "2024-01-01T00:00:00",
+    "total_tests": 2
+  },
+  "tests": [
+    {
+      "name": "API Health Check",
+      "method": "GET",
+      "endpoint": "https://api.example.com/health",
+      "headers": {},
+      "description": "Check API health"
+    },
+    {
+      "name": "Login Test",
+      "method": "POST",
+      "endpoint": "https://api.example.com/login",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "username": "test",
+        "password": "test123"
+      },
+      "description": "Test user login"
+    }
+  ]
+}

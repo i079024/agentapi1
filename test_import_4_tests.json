@@ -1,0 +1,54 @@
+[
+    {
+        "name": "Get User Test",
+        "method": "GET",
+        "endpoint": "https://jsonplaceholder.typicode.com/users/1",
+        "description": "Test to fetch user with ID 1",
+        "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        },
+        "tags": ["test", "user", "get"]
+    },
+    {
+        "name": "Create Post Test",
+        "method": "POST", 
+        "endpoint": "https://jsonplaceholder.typicode.com/posts",
+        "description": "Test to create a new post",
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": {
+            "title": "Test Post",
+            "body": "This is a test post content",
+            "userId": 1
+        },
+        "tags": ["test", "post", "create"]
+    },
+    {
+        "name": "Update Post Test",
+        "method": "PUT",
+        "endpoint": "https://jsonplaceholder.typicode.com/posts/1", 
+        "description": "Test to update an existing post",
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": {
+            "id": 1,
+            "title": "Updated Post Title",
+            "body": "Updated post content",
+            "userId": 1
+        },
+        "tags": ["test", "post", "update"]
+    },
+    {
+        "name": "Delete Post Test",
+        "method": "DELETE",
+        "endpoint": "https://jsonplaceholder.typicode.com/posts/1",
+        "description": "Test to delete a post",
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "tags": ["test", "post", "delete"]
+    }
+]

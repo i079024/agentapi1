@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Get Users",
+    "method": "GET",
+    "endpoint": "https://jsonplaceholder.typicode.com/users",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "description": "Fetch all users"
+  },
+  {
+    "name": "Create User",
+    "method": "POST",
+    "endpoint": "https://jsonplaceholder.typicode.com/users",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "name": "John",
+      "email": "john@example.com"
+    },
+    "description": "Create new user"
+  }
+]
