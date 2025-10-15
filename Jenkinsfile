@@ -7,7 +7,7 @@ pipeline {
     environment {
         // GitHub Configuration
         GITHUB_CREDENTIALS = 'github-pat'
-        REPO_URL = 'https://github.com/your-org/your-repo.git'
+        REPO_URL = 'https://github.com/i079024/agentapi1.git'
         
         // n8n Webhook URL
         N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/jenkins-trigger'
